@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nirban Nibash Resort - Booking System & Dashboard</title>
+    <!-- Chart.js CDN for Graph -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        /* Special Price Badge Style */
+        .price-badge-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 8px;
+            background: #fff3f3;
+            padding: 6px 10px;
+            border-radius: 8px;
+            border: 1px dashed #ff4d4d;
+        }
+        .rack-price {
+            text-decoration: line-through;
+            color: #d9534f;
+            font-size: 14px;
+            font-weight: bold;
+        }
+        .offer-price {
+            color: #28a745;
+            font-size: 18px;
+            font-weight: 800;
+        }
+        .person-tag {
+            background: #007bff;
+            color: white;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        /* Dashboard Financial Analytics Styles */
+        .report-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; margin-bottom: 25px; }
+        .report-card { background: #f9fafb; padding: 20px; border-radius: 8px; border: 1px solid #e5e7eb; border-left: 5px solid #007bff; }
+        .report-card.sales { border-left-color: #28a745; }
+        .report-card.advance { border-left-color: #17a2b8; }
+        .report-card.due { border-left-color: #dc3545; }
+        .report-card h3 { font-size: 13px; color: #666; margin-bottom: 8px; }
+        .report-card p { font-size: 22px; font-weight: bold; color: #333; }
+
+        .chart-box { background: #f9fafb; border: 1px solid #e5e7eb; padding: 25px; border-radius: 12px; margin-top: 30px; margin-bottom: 30px; box-shadow: 0 4px 6px rgba(0,0,0,0.02); }
+    </style>
+</head>
+<body>
+
+    <!-- Header -->
+    <header class="header">
+        <div class="logo">
+            🏨 Nirban Nibash Resort, Sreemangal
+        </div>
+        <div class="header-info">
+            <span>Radhanagar, Sreemangal, Moulvibazar | 01643-083366</span>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="container">
+
+        <!-- Dashboard Title -->
+        <section class="welcome">
+            <div>
+                <h1>Booking Dashboard & Analytics</h1>
+                <p>Manage rooms, cottages, villas, financial reports and customer reservations.</p>
+            </div>
+            <button class="new-booking-btn" onclick="scrollToBooking()">
+                + New Booking
+            </button>
+        </section>
+
+        <!-- Financial Summary Cards -->
+        <section class="report-grid">
+            <div class="report-card">
+                <h3>Total Bookings (30 Days)</h3>
+                <p id="totalBookingsCount">0</p>
+            </div>
+            <div class="report-card sales">
+                <h3>Total Sales</h3>
+                <p>৳<span id="totalSalesAmount">0</span></p>
+            </div>
+            <div class="report-card advance">
+                <h3>Total Advance Paid</h3>
+                <p>৳<span id="totalAdvanceAmount">0</span></p>
+            </div>
+            <div class="report-card due">
+                <h3>Total Due Amount</h3>
+                <p>৳<span id="totalDueAmount">0</span></p>
+            </div>
+        </section>
+
+        <!-- Resort Photo Gallery Section -->
+        <section class="rooms-section">
+            <div class="section-title">
+                <div>
+                    <h2>📸 Resort & Room Gallery</h2>
+                    <p>Visual highlights of Nirban Nibash Resort.</p>
+                </div>
+            </div>
+            <div class="gallery-grid">
+                <div class="gallery-item"><img src="imgea/1.jpeg" alt="Resort Sunset Exterior"></div>
+                <div class="gallery-item"><img src="imgea/2.jpeg" alt="Duplex Cottages Night View"></div>
+                <div class="gallery-item"><img src="imgea/3.jpeg" alt="Balcony Tea Garden View"></div>
+                <div class="gallery-item"><img src="imgea/5.jpeg" alt="Garden Path View"></div>
+                <div class="gallery-item"><img src="imgea/4.jpeg" alt="Bedroom Interior"></div>
+                <div class="gallery-item"><img src="imgea/6.jpeg" alt="Private Pool Villa"></div>
+                <div class="gallery-item"><img src="imgea/7.jpeg" alt="Private Pool Villa Family"></div>
+            </div>
+        </section>
+
+        <!-- Statistics -->
+        <section class="stats">
+            <div class="stat-card">
+                <div class="stat-icon">🏡</div>
+                <div>
+                    <h3>11</h3>
+                    <p>Total Units</p>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">🪵</div>
+                <div>
+                    <h3>6</h3>
+                    <p>Couple Room</p>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">🌿</div>
+                <div>
+                    <h3>5</h3>
+                    <p>Family Room</p>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">🏊‍♂️</div>
+                <div>
+                    <h3 id="availableCount">11</h3>
+                    <p>Available</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Date Search -->
+        <section class="search-box">
+            <h2>Check Room Availability</h2>
+            <div class="date-row">
+                <div class="input-group">
+                    <label>Check-in Date</label>
+                    <input type="date" id="checkIn">
+                </div>
+                <div class="input-group">
+                    <label>Check-out Date</label>
+                    <input type="date" id="checkOut">
+                </div>
+                <button class="check-btn" onclick="checkRooms()">
+                    Check Availability
+                </button>
+            </div>
+        </section>
+
+        <!-- Rooms & Villas Section -->
+        <section class="rooms-section">
+            <div class="section-title">
+                <div>
+                    <h2>Cottages & Villas (September Special Offer)</h2>
+                    <p>Select an available unit for booking.</p>
+                </div>
+                <div class="legend">
+                    <span><i class="available-dot"></i> Available</span>
+                    <span><i class="booked-dot"></i> Locked</span>
+                </div>
+            </div>
+
+            <!-- Couple Room -->
+            <h3 class="room-category">🪵 Couple Room</h3>
+            <div class="room-grid">
+                <div class="room-card available" data-room="Sindupath" data-type="Duplex">
+                    <img src="imgea/1.jpeg" alt="Sindupath" class="room-thumb">
+                    <div class="room-number">01</div>
+                    <h3>Sindupath</h3>
+                    <p>Duplex Wooden Couple Room (1st Floor)</p>
+                    <div class="price-badge-container">
+                        <span class="person-tag">👤 2 Person</span>
+                        <span class="rack-price">4,500 TK</span>
+                        <span class="offer-price">⚡ 2,800 TK</span>
+                    </div>
+                    <span class="status">Available</span>
+                </div>
+                <div class="room-card available" data-room="Nilambori" data-type="Duplex">
+                    <img src="imgea/8.jpeg" alt="Nilambori" class="room-thumb">
+                    <div class="room-number">02</div>
+                    <h3>Nilambori</h3>
+                    <p>Duplex Wooden Couple Room (1st Floor)</p>
+                    <div class="price-badge-container">
+                        <span class="person-tag">👤 2 Person</span>
+                        <span class="rack-price">4,500 TK</span>
+                        <span class="offer-price">⚡ 2,800 TK</span>
+                    </div>
+                    <span class="status">Available</span>
+                </div>
+                <div class="room-card available" data-room="Kunjochaya" data-type="Duplex">
+                    <img src="imgea/2.jpeg" alt="Kunjochaya" class="room-thumb">
+                    <div class="room-number">03</div>
+                    <h3>Kunjochaya</h3>
+                    <p>Duplex Wooden Couple Room (2nd Floor)</p>
+                    <div class="price-badge-container">
+                        <span class="person-tag">👤 2 Person</span>
+                        <span class="rack-price">5,000 TK</span>
+                        <span class="offer-price">⚡ 3,200 TK</span>
+                    </div>
+                    <span class="status">Available</span>
+                </div>
+                <div class="room-card available" data-room="Priyonibash" data-type="Duplex">
+                    <img src="imgea/8.jpeg" alt="Priyonibash" class="room-thumb">
+                    <div class="room-number">04</div>
+                    <h3>Priyonibash</h3>
+                    <p>Duplex Wooden Couple Room (2nd Floor)</p>
+                    <div class="price-badge-container">
+                        <span class="person-tag">👤 2 Person</span>
+                        <span class="rack-price">5,000 TK</span>
+                        <span class="offer-price">⚡ 3,200 TK</span>
+                    </div>
+                    <span class="status">Available</span>
+                </div>
+            </div>
+
+            <!-- Family Villa -->
+            <h3 class="room-category">🌿 Tea Garden Villa Couple & Family</h3>
+            <div class="room-grid">
+                <div class="room-card available" data-room="Clantishese" data-type="Villa">
+                    <img src="imgea/1.jpeg" alt="Clantishese" class="room-thumb">
+                    <div class="room-number">05</div>
+                    <h3>Clantishese</h3>
+                    <p>Tea Garden Villa Room</p>
+                    <div class="price-badge-container">
+                        <span class="person-tag">👤 2 Person</span>
+                        <span class="rack-price">4,000 TK</span>
+                        <span class="offer-price">⚡ 2,500 TK</span>
+                    </div>
+                    <span class="status">Available</span>
+                </div>
+                <div class="room-card available" data-room="Joljosna" data-type="Villa">
+                    <img src="imgea/1.jpeg" alt="Joljosna" class="room-thumb">
+                    <div class="room-number">06</div>
+                    <h3>Joljosna</h3>
+                    <p>Villa Double Bed Room (Without Pool)</p>
+                    <div class="price-badge-container">
+                        <span class="person-tag">👤 4 Person</span>
+                        <span class="rack-price">5,000 TK</span>
+                        <span class="offer-price">⚡ 3,200 TK</span>
+                    </div>
+                    <span class="status">Available</span>
+                </div>
+                <div class="room-card available" data-room="Tondraloy" data-type="Villa">
+                    <img src="imgea/2.jpeg" alt="Tondraloy" class="room-thumb">
+                    <div class="room-number">07</div>
+                    <h3>Tondraloy</h3>
+                    <p>Villa Double Bed Room (Without Pool)</p>
+                    <div class="price-badge-container">
+                        <span class="person-tag">👤 4 Person</span>
+                        <span class="rack-price">5,000 TK</span>
+                        <span class="offer-price">⚡ 3,200 TK</span>
+                    </div>
+                    <span class="status">Available</span>
+                </div>
+            </div>
+
+            <!-- Private Pool Villas -->
+            <h3 class="room-category">🏊‍♂️ Private Pool Villas</h3>
+            <div class="room-grid">
+                <div class="room-card available" data-room="Pool Villa Couple 1" data-type="Pool">
+                    <img src="imgea/6.jpeg" alt="Pool Villa Couple 1" class="room-thumb">
+                    <div class="room-number">08</div>
+                    <h3>Private Pool Villa</h3>
+                    <p>Couple Room (Suite 1)</p>
+                    <div class="price-badge-container">
+                        <span class="person-tag">👤 2 Person</span>
+                        <span class="rack-price">5,500 TK</span>
+                        <span class="offer-price">⚡ 3,500 TK</span>
+                    </div>
+                    <span class="status">Available</span>
+                </div>
+                <div class="room-card available" data-room="Pool Villa Couple 2" data-type="Pool">
+                    <img src="imgea/6.jpeg" alt="Pool Villa Couple 2" class="room-thumb">
+                    <div class="room-number">09</div>
+                    <h3>Private Pool Villa</h3>
+                    <p>Couple Room (Suite 2)</p>
+                    <div class="price-badge-container">
+                        <span class="person-tag">👤 2 Person</span>
+                        <span class="rack-price">5,500 TK</span>
+                        <span class="offer-price">⚡ 3,500 TK</span>
+                    </div>
+                    <span class="status">Available</span>
+                </div>
+                <div class="room-card available" data-room="Pool Villa Family 1" data-type="Pool">
+                    <img src="imgea/7.jpeg" alt="Pool Villa Family 1" class="room-thumb">
+                    <div class="room-number">10</div>
+                    <h3>Private Swimming Pool</h3>
+                    <p>Double Bed Room (Family 1)</p>
+                    <div class="price-badge-container">
+                        <span class="person-tag">👤 4 Person</span>
+                        <span class="rack-price">7,000 TK</span>
+                        <span class="offer-price">⚡ 4,500 TK</span>
+                    </div>
+                    <span class="status">Available</span>
+                </div>
+                <div class="room-card available" data-room="Pool Villa Family 2" data-type="Pool">
+                    <img src="imgea/7.jpeg" alt="Pool Villa Family 2" class="room-thumb">
+                    <div class="room-number">11</div>
+                    <h3>Private Swimming Pool</h3>
+                    <p>Double Bed Room (Family 2)</p>
+                    <div class="price-badge-container">
+                        <span class="person-tag">👤 4 Person</span>
+                        <span class="rack-price">7,000 TK</span>
+                        <span class="offer-price">⚡ 4,500 TK</span>
+                    </div>
+                    <span class="status">Available</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Booking Form -->
+        <section class="booking-section" id="bookingSection">
+            <div class="section-title">
+                <div>
+                    <h2>New Booking</h2>
+                    <p>Enter customer information and confirm the reservation.</p>
+                </div>
+            </div>
+
+            <form id="bookingForm">
+                <div class="form-grid">
+                    <div class="input-group">
+                        <label>Customer Name</label>
+                        <input type="text" id="customerName" placeholder="Enter customer name" required>
+                    </div>
+
+                    <div class="input-group">
+                        <label>Phone Number</label>
+                        <input type="tel" id="customerPhone" placeholder="01XXXXXXXXX" required>
+                    </div>
+
+                    <div class="input-group">
+                        <label>Address / Location</label>
+                        <input type="text" id="customerAddress" placeholder="e.g. Jashore" required>
+                    </div>
+
+                    <div class="input-group">
+                        <label>Email Address</label>
+                        <input type="email" id="customerEmail" placeholder="customer@gmail.com">
+                    </div>
+
+                    <div class="input-group">
+                        <label>NID Card Number</label>
+                        <input type="text" id="customerNid" placeholder="NID Number">
+                    </div>
+
+                    <div class="input-group">
+                        <label>Check-in Date</label>
+                        <input type="date" id="bookingCheckIn" required>
+                    </div>
+
+                    <div class="input-group">
+                        <label>Check-out Date</label>
+                        <input type="date" id="bookingCheckOut" required>
+                    </div>
+
+                    <div class="input-group">
+                        <label>Select Cottage / Villa</label>
+                        <select id="roomSelect" required>
+                            <option value="">Select Unit</option>
+                            <optgroup label="Duplex Wooden Cottages">
+                                <option value="Sindupath">Sindupath (1st Floor - 2 Persons - Offer: 2,800 TK)</option>
+                                <option value="Nilambori">Nilambori (1st Floor - 2 Persons - Offer: 2,800 TK)</option>
+                                <option value="Kunjochaya">Kunjochaya (2nd Floor - 2 Persons - Offer: 3,200 TK)</option>
+                                <option value="Priyonibash">Priyonibash (2nd Floor - 2 Persons - Offer: 3,200 TK)</option>
+                            </optgroup>
+                            <optgroup label="Tea Garden Couple & Family">
+                                <option value="Clantishese">Clantishese (Tea Garden Villa - 2 Persons - Offer: 2,500 TK)</option>
+                                <option value="Joljosna">Joljosna (Villa Double Bed - 4 Persons - Offer: 3,200 TK)</option>
+                                <option value="Tondraloy">Tondraloy (Villa Double Bed - 4 Persons - Offer: 3,200 TK)</option>
+                            </optgroup>
+                            <optgroup label="Private Pool Villas">
+                                <option value="Pool Villa Couple 1">Private Pool Villa Couple 1 (2 Persons - Offer: 3,500 TK)</option>
+                                <option value="Pool Villa Couple 2">Private Pool Villa Couple 2 (2 Persons - Offer: 3,500 TK)</option>
+                                <option value="Pool Villa Family 1">Private Swimming Pool Family 1 (4 Persons - Offer: 4,500 TK)</option>
+                                <option value="Pool Villa Family 2">Private Swimming Pool Family 2 (4 Persons - Offer: 4,500 TK)</option>
+                            </optgroup>
+                        </select>
+                    </div>
+
+                    <div class="input-group">
+                        <label>Number of Guests</label>
+                        <input type="number" id="guests" min="1" placeholder="Number of guests" value="2" required>
+                    </div>
+
+                    <div class="input-group">
+                        <label>Generated By (Staff Name)</label>
+                        <input type="text" id="generatedBy" placeholder="e.g. Mr. Tajbi" value="Mr. Tajbi" required>
+                    </div>
+
+                    <div class="input-group">
+                        <label>Room Rate (৳)</label>
+                        <input type="number" id="amount" min="0" placeholder="Total Rate" required>
+                    </div>
+
+                    <div class="input-group">
+                        <label>Discount Amount (৳)</label>
+                        <input type="number" id="discountAmount" min="0" value="0" placeholder="Discount">
+                    </div>
+
+                    <div class="input-group">
+                        <label>Advance Paid Amount (৳)</label>
+                        <input type="number" id="paidAmount" min="0" value="0" placeholder="Advance Paid">
+                    </div>
+
+                    <div class="input-group">
+                        <label>Payment Method</label>
+                        <select id="paymentMethod">
+                            <option value="Bkash">bKash</option>
+                            <option value="Cash">Cash</option>
+                            <option value="Bank">Bank Transfer</option>
+                            <option value="Card">Card</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-actions">
+                    <button type="reset" class="reset-btn">Clear</button>
+                    <button type="submit" class="confirm-btn">✓ Confirm Booking</button>
+                </div>
+            </form>
+        </section>
+
+        <!-- Booking List -->
+        <section class="booking-list-section">
+            <div class="section-title">
+                <div>
+                    <h2>Recent Bookings</h2>
+                    <p>Confirmed customer reservations.</p>
+                </div>
+            </div>
+            <div id="bookingList" class="booking-list">
+                <div class="empty-booking">No bookings yet.</div>
+            </div>
+        </section>
+
+        <!-- Financial Comparison Chart Section (Moved to Last) -->
+        <section class="chart-box">
+            <h3 style="margin-bottom: 20px; color: #333; text-align: center; font-size: 18px;">📊 Financial Analytics Overview (Last 30 Days)</h3>
+            <div style="position: relative; height: 320px; width: 100%;">
+                <canvas id="salesChart"></canvas>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer>
+        <p>© 2026 Nirban Nibash Resort, Sreemangal — Private Booking System | Note: Extra Mattress BDT 500 per person including breakfast and room amenities</p>
+    </footer>
+
+    <script src="script.js"></script>
+    <script>
+        window.addEventListener('DOMContentLoaded', () => {
+            const data = localStorage.getItem("resortBookings");
+            const bookings = data ? JSON.parse(data) : [];
+
+            let count = 0;
+            let totalSales = 0;
+            let totalAdvance = 0;
+            let totalDue = 0;
+
+            const now = new Date();
+            const thirtyDaysAgo = new Date();
+            thirtyDaysAgo.setDate(now.getDate() - 30);
+
+            bookings.forEach(booking => {
+                if (booking.status === "Cancelled" || booking.status === "CANCELLED") return;
+                
+                const bookingDate = new Date(booking.bookingDate || Date.now());
+                if (bookingDate >= thirtyDaysAgo) {
+                    count++;
+                    const subtotal = Number(booking.amount || 0);
+                    const discount = Number(booking.discountAmount || 0);
+                    const finalPrice = subtotal - discount;
+                    const paid = Number(booking.paidAmount || 0);
+                    const due = finalPrice - paid;
+
+                    totalSales += finalPrice;
+                    totalAdvance += paid;
+                    totalDue += due;
+                }
+            });
+
+            // Update UI elements
+            if(document.getElementById("totalBookingsCount")) document.getElementById("totalBookingsCount").textContent = count;
+            if(document.getElementById("totalSalesAmount")) document.getElementById("totalSalesAmount").textContent = totalSales.toLocaleString();
+            if(document.getElementById("totalAdvanceAmount")) document.getElementById("totalAdvanceAmount").textContent = totalAdvance.toLocaleString();
+            if(document.getElementById("totalDueAmount")) document.getElementById("totalDueAmount").textContent = totalDue.toLocaleString();
+
+            // Doughnut Chart Configuration
+            const ctxElem = document.getElementById('salesChart');
+            if(ctxElem) {
+                const ctx = ctxElem.getContext('2d');
+                new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['Total Sales (মোট বিক্রি)', 'Advance Paid (অগ্রিম পরিশোধ)', 'Total Due (বকেয়া)'],
+                        datasets: [{
+                            data: [totalSales, totalAdvance, totalDue],
+                            backgroundColor: [
+                                'rgba(40, 167, 69, 0.85)',
+                                'rgba(23, 162, 184, 0.85)',
+                                'rgba(220, 53, 69, 0.85)'
+                            ],
+                            borderColor: [
+                                'rgba(40, 167, 69, 1)',
+                                'rgba(23, 162, 184, 1)',
+                                'rgba(220, 53, 69, 1)'
+                            ],
+                            borderWidth: 2,
+                            hoverOffset: 8
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: true,
+                                position: 'bottom',
+                                labels: {
+                                    padding: 20,
+                                    font: {
+                                        size: 13,
+                                        weight: 'bold'
+                                    }
+                                }
+                            },
+                            tooltip: {
+                                backgroundColor: 'rgba(0, 0, 0, 0.85)',
+                                titleFont: { size: 14 },
+                                bodyFont: { size: 14 },
+                                padding: 12,
+                                cornerRadius: 8,
+                                callbacks: {
+                                    label: function(context) {
+                                        const value = context.raw || 0;
+                                        return ` Amount: ৳ ${value.toLocaleString()}`;
+                                    }
+                                }
+                            }
+                        },
+                        animation: {
+                            animateScale: true,
+                            animateRotate: true
+                        }
+                    }
+                });
+            }
+        });
+
+        function scrollToBooking() {
+            const section = document.getElementById('bookingSection');
+            if(section) {
+                section.scrollIntoView({ behavior: 'smooth' });
+            }
+        }
+    </script>
+</body>
+</html>

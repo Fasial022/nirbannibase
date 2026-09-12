@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Room Booking Invoice</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: Arial, Helvetica, sans-serif; background: #f3f4f6; color: #111827; padding: 30px; }
+        .receipt-container { max-width: 800px; margin: 0 auto; background: #ffffff; padding: 40px; border-radius: 10px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08); position: relative; }
+        
+        .top-action-bar { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #e5e7eb; padding-bottom: 15px; margin-bottom: 20px; }
+        .top-action-bar span { font-weight: bold; color: #374151; }
+        
+        .btn-group { display: flex; gap: 10px; }
+        .print-top-btn { background: #dc2626; color: #ffffff; border: none; padding: 8px 16px; border-radius: 6px; font-weight: bold; cursor: pointer; }
+        .print-top-btn:hover { background: #b91c1c; }
+        .edit-toggle-btn { background: #2563eb; color: #ffffff; border: none; padding: 8px 16px; border-radius: 6px; font-weight: bold; cursor: pointer; }
+        .edit-toggle-btn:hover { background: #1d4ed8; }
+
+        .resort-header { text-align: left; margin-bottom: 20px; }
+        .resort-header h1 { font-size: 24px; color: #0284c7; margin-bottom: 4px; }
+        .resort-header p { color: #4b5563; font-size: 13px; margin-bottom: 2px; }
+
+        .invoice-meta { text-align: right; font-size: 13px; color: #374151; margin-bottom: 25px; line-height: 1.5; }
+        .invoice-meta strong { color: #111827; }
+
+        .box-section { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; margin-bottom: 20px; }
+        .box-title { font-size: 15px; font-weight: bold; color: #0284c7; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; border-bottom: 1px solid #e5e7eb; padding-bottom: 6px; }
+
+        .guest-info p { font-size: 14px; margin-bottom: 6px; color: #374151; }
+        .guest-info strong { font-size: 16px; color: #111827; }
+
+        .booking-details-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 13px; color: #374151; }
+        .booking-details-grid div { margin-bottom: 4px; }
+
+        .data-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        .data-table th { background: #0284c7; color: white; text-align: left; padding: 10px; font-size: 13px; }
+        .data-table td { padding: 10px; border-bottom: 1px solid #e5e7eb; font-size: 13px; color: #111827; }
+        .data-table tr:last-child td { border-bottom: none; }
+
+        .payment-summary-box { background: #ffffff; border: 1px solid #e5e7eb; border-radius: 8px; margin-bottom: 20px; overflow: hidden; }
+        .payment-summary-title { background: #16a34a; color: white; padding: 10px 16px; font-weight: bold; font-size: 15px; display: flex; align-items: center; gap: 6px; }
+        .summary-table { width: 100%; border-collapse: collapse; }
+        .summary-table td { padding: 10px 16px; font-size: 14px; border-bottom: 1px solid #f3f4f6; }
+        .summary-table td:last-child { text-align: right; font-weight: bold; }
+        .due-row td { color: #dc2626; font-size: 17px; font-weight: bold; background: #fef2f2; }
+
+        .status { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: bold; text-transform: uppercase; }
+        .status.booked { background: #dcfce7; color: #166534; }
+        .status.cancelled { background: #fee2e2; color: #991b1b; }
+
+        /* Customization inputs */
+        input.editable-input { width: 100%; padding: 4px 6px; font-size: 13px; border: 1px solid #cbd5e1; border-radius: 4px; }
+
+        .receipt-footer { text-align: center; color: #9ca3af; font-size: 12px; margin-top: 30px; border-top: 1px solid #e5e7eb; padding-top: 15px; }
+
+        .actions { display: flex; justify-content: center; gap: 10px; margin-top: 25px; }
+        .actions button { border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: bold; }
+        .print-btn { background: #111827; color: #ffffff; }
+        .close-btn { background: #6b7280; color: #ffffff; }
+        .save-btn { background: #16a34a; color: #ffffff; display: none; }
+
+        @media print {
+            body { background: #ffffff; padding: 0; }
+            .receipt-container { max-width: 100%; box-shadow: none; border-radius: 0; padding: 10px; }
+            .actions, .top-action-bar, .edit-toggle-btn { display: none; }
+            @page { size: A4; margin: 10mm; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="receipt-container">
+        <div class="top-action-bar">
+            <span>🏨 Room Booking Invoice</span>
+            <div class="btn-group">
+                <button class="edit-toggle-btn" id="toggleEditBtn" onclick="toggleEditMode()">✏️ Customize / Edit</button>
+                <button class="print-top-btn" onclick="window.print()">🖨️ Print</button>
+            </div>
+        </div>
+
+        <div class="resort-header">
+            <h1>Nirban Nibash Resort, Sreemangal</h1>
+            <p><strong>Address:</strong> Radhanagar, Sreemangal, Moulvibazar</p>
+            <p><strong>Contact:</strong> 01643-083366</p>
+        </div>
+
+        <div class="invoice-meta">
+            Invoice #: <strong id="invoiceId">INV-58529</strong><br>
+            Type: <span id="bookingTypeBadge" class="status booked">Booked</span><br>
+            Date: <span id="invoiceDate">-</span>
+        </div>
+
+        <div class="box-section">
+            <div class="box-title">👤 Guest Information</div>
+            <div class="guest-info">
+                <strong id="customerName" class="view-mode">-</strong><br>
+                <p>📍 <span id="customerAddress" class="view-mode">Bangladesh</span></p>
+                <p>📞 <span id="customerPhone" class="view-mode">-</span></p>
+                <p>📧 <span id="customerEmail" class="view-mode">No email</span> | 🪪 NID: <span id="customerNid" class="view-mode">No NID</span></p>
+            </div>
+        </div>
+
+        <div class="box-section">
+            <div class="box-title">ℹ️ Booking Details</div>
+            <div class="booking-details-grid">
+                <div><strong>👤 Generated By:</strong> <span id="generatedBy" class="view-mode">Mr. Shahajan</span></div>
+                <div><strong>👥 Guests:</strong> <span id="guests" class="view-mode">2</span> Persons</div>
+                <div><strong>➡️ Check-In:</strong> <span id="checkIn" class="view-mode">-</span> (12:00 PM)</div>
+                <div><strong>⬅️ Check-Out:</strong> <span id="checkOut" class="view-mode">-</span> (11:00 AM)</div>
+            </div>
+        </div>
+
+        <div class="box-section" style="padding: 0; overflow: hidden;">
+            <div style="background: #0284c7; color: white; padding: 10px 16px; font-weight: bold; font-size: 15px;">
+                🛏️ Unit Details
+            </div>
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th style="width: 40px;">#</th>
+                        <th>Cottage / Villa Details</th>
+                        <th>Booking Date</th>
+                        <th>Rate</th>
+                        <th>Discount</th>
+                        <th style="text-align: right;">Subtotal</th>
+                    </tr>
+                </thead>
+                <tbody id="roomTableBody"></tbody>
+            </table>
+        </div>
+
+        <div class="payment-summary-box">
+            <div class="payment-summary-title">🟩 Payment Summary</div>
+            <table class="summary-table">
+                <tr>
+                    <td>Subtotal</td>
+                    <td id="summarySubtotal">৳0.00</td>
+                </tr>
+                <tr>
+                    <td>Discount</td>
+                    <td id="summaryDiscount">৳0.00</td>
+                </tr>
+                <tr style="border-top: 1px solid #e5e7eb; font-weight: bold;">
+                    <td>Invoice Amount</td>
+                    <td id="summaryInvoiceAmount">৳0.00</td>
+                </tr>
+                <tr>
+                    <td id="paidMethodLabel" style="color: #4b5563; font-size: 13px;">
+                        🟢 Paid Amount<br>
+                        <span style="font-weight: normal; font-size: 12px;" id="advanceSubText">Advance, bKash</span>
+                    </td>
+                    <td id="summaryPaidAmount" style="color: #16a34a;">৳0.00</td>
+                </tr>
+                <tr class="due-row">
+                    <td>Due Amount</td>
+                    <td id="summaryDueAmount">৳0.00</td>
+                </tr>
+            </table>
+        </div>
+
+        <div class="receipt-footer">
+            <p>This is a computer-generated document.</p>
+        </div>
+
+        <div class="actions">
+            <button class="save-btn" id="saveChangesBtn" onclick="saveCustomChanges()">💾 Save Changes</button>
+            <button class="print-btn" onclick="window.print()">🖨️ Print Receipt</button>
+            <button class="close-btn" onclick="window.location.href='index.html'">← Back to Dashboard</button>
+        </div>
+    </div>
+
+    <script>
+        let currentBooking = {};
+
+        function loadReceiptData() {
+            const data = localStorage.getItem("lastBooking");
+            if (!data) {
+                alert("No booking receipt found.");
+                return;
+            }
+            try {
+                currentBooking = JSON.parse(data);
+
+                document.getElementById("invoiceId").textContent = currentBooking.id || "INV-58529";
+                document.getElementById("invoiceDate").textContent = currentBooking.bookingDate ? currentBooking.bookingDate.split(",")[0] : "-";
+                
+                const badge = document.getElementById("bookingTypeBadge");
+                badge.textContent = currentBooking.status || "Booked";
+                badge.className = "status " + (currentBooking.status === "Cancelled" ? "cancelled" : "booked");
+
+                document.getElementById("customerName").textContent = currentBooking.customerName || "-";
+                document.getElementById("customerAddress").textContent = currentBooking.customerAddress || "Bangladesh";
+                document.getElementById("customerPhone").textContent = currentBooking.customerPhone || "-";
+                document.getElementById("customerEmail").textContent = currentBooking.customerEmail || "No email";
+                document.getElementById("customerNid").textContent = currentBooking.customerNid || "No NID";
+
+                document.getElementById("generatedBy").textContent = currentBooking.generatedBy || "Mr. Shahajan";
+                document.getElementById("guests").textContent = currentBooking.guests || "2";
+                document.getElementById("checkIn").textContent = currentBooking.checkIn || "-";
+                document.getElementById("checkOut").textContent = currentBooking.checkOut || "-";
+
+                const subtotal = Number(currentBooking.amount || 0);
+                const discount = Number(currentBooking.discountAmount || 0);
+                const invoiceAmount = subtotal - discount;
+                const paidAmount = Number(currentBooking.paidAmount || 0);
+                const dueAmount = invoiceAmount - paidAmount;
+
+                const roomTableBody = document.getElementById("roomTableBody");
+                roomTableBody.innerHTML = `
+                    <tr>
+                        <td>1</td>
+                        <td><strong>${currentBooking.room || "-"}</strong><br><small style="color: #6b7280;">👥 ${currentBooking.guests || 2} Persons</small></td>
+                        <td><span style="background: #0284c7; color: white; padding: 3px 8px; border-radius: 4px; font-size: 11px;">${currentBooking.checkIn || "-"}</span></td>
+                        <td>৳${subtotal.toLocaleString()}</td>
+                        <td>৳${discount.toLocaleString()}</td>
+                        <td style="text-align: right;">৳${invoiceAmount.toLocaleString()}</td>
+                    </tr>
+                `;
+
+                document.getElementById("summarySubtotal").textContent = "৳" + subtotal.toLocaleString() + ".00";
+                document.getElementById("summaryDiscount").textContent = "৳" + discount.toLocaleString() + ".00";
+                document.getElementById("summaryInvoiceAmount").textContent = "৳" + invoiceAmount.toLocaleString() + ".00";
+                document.getElementById("advanceSubText").textContent = `Advance, ${currentBooking.paymentMethod || "bKash"} (${currentBooking.bookingDate ? currentBooking.bookingDate.split(",")[0] : ""})`;
+                document.getElementById("summaryPaidAmount").textContent = "৳" + paidAmount.toLocaleString() + ".00";
+                document.getElementById("summaryDueAmount").textContent = "৳" + dueAmount.toLocaleString() + ".00";
+
+            } catch (error) {
+                console.error("Receipt error:", error);
+            }
+        }
+
+        let isEditing = false;
+        function toggleEditMode() {
+            isEditing = !isEditing;
+            const saveBtn = document.getElementById("saveChangesBtn");
+            const toggleBtn = document.getElementById("toggleEditBtn");
+
+            if (isEditing) {
+                toggleBtn.textContent = "❌ Cancel Edit";
+                saveBtn.style.display = "block";
+
+                // Turn text into input fields for customization
+                document.getElementById("customerName").innerHTML = `<input type="text" id="editName" class="editable-input" value="${currentBooking.customerName || ''}">`;
+                document.getElementById("customerPhone").innerHTML = `<input type="text" id="editPhone" class="editable-input" value="${currentBooking.customerPhone || ''}">`;
+                document.getElementById("customerAddress").innerHTML = `<input type="text" id="editAddress" class="editable-input" value="${currentBooking.customerAddress || ''}">`;
+                document.getElementById("guests").innerHTML = `<input type="number" id="editGuests" class="editable-input" style="width:60px;" value="${currentBooking.guests || 2}">`;
+                document.getElementById("checkIn").innerHTML = `<input type="text" id="editCheckIn" class="editable-input" value="${currentBooking.checkIn || ''}">`;
+                document.getElementById("checkOut").innerHTML = `<input type="text" id="editCheckOut" class="editable-input" value="${currentBooking.checkOut || ''}">`;
+            } else {
+                loadReceiptData(); // Reload normal view
+                saveBtn.style.display = "none";
+                toggleBtn.textContent = "✏️ Customize / Edit";
+            }
+        }
+
+        function saveCustomChanges() {
+            currentBooking.customerName = document.getElementById("editName").value;
+            currentBooking.customerPhone = document.getElementById("editPhone").value;
+            currentBooking.customerAddress = document.getElementById("editAddress").value;
+            currentBooking.guests = document.getElementById("editGuests").value;
+            currentBooking.checkIn = document.getElementById("editCheckIn").value;
+            currentBooking.checkOut = document.getElementById("editCheckOut").value;
+
+            // Update in localStorage lastBooking
+            localStorage.setItem("lastBooking", JSON.stringify(currentBooking));
+
+            // Also update in main resortBookings list if it exists
+            const allData = localStorage.getItem("resortBookings");
+            if (allData) {
+                let bookings = JSON.parse(allData);
+                bookings = bookings.map(b => b.id === currentBooking.id ? currentBooking : b);
+                localStorage.setItem("resortBookings", JSON.stringify(bookings));
+            }
+
+            alert("Invoice updated successfully!");
+            isEditing = false;
+            document.getElementById("saveChangesBtn").style.display = "none";
+            document.getElementById("toggleEditBtn").textContent = "✏️ Customize / Edit";
+            loadReceiptData();
+        }
+
+        window.onload = loadReceiptData;
+    </script>
+</body>
+</html>
