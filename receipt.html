@@ -50,7 +50,6 @@
         .status.booked { background: #dcfce7; color: #166534; }
         .status.cancelled { background: #fee2e2; color: #991b1b; }
 
-        /* Customization inputs */
         input.editable-input { width: 100%; padding: 4px 6px; font-size: 13px; border: 1px solid #cbd5e1; border-radius: 4px; }
 
         .receipt-footer { text-align: center; color: #9ca3af; font-size: 12px; margin-top: 30px; border-top: 1px solid #e5e7eb; padding-top: 15px; }
@@ -171,17 +170,37 @@
         </div>
     </div>
 
-    <script>
+    <script type="module">
         let currentBooking = {};
 
-        function loadReceiptData() {
-            const data = localStorage.getItem("lastBooking");
+        async function loadReceiptData() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const bookingId = urlParams.get("id");
+
+            let data = null;
+
+            if (bookingId) {
+                const allData = localStorage.getItem("resortBookings");
+                if (allData) {
+                    const bookings = JSON.parse(allData);
+                    data = bookings.find(b => b.id === bookingId);
+                }
+            }
+
+            if (!data) {
+                const localData = localStorage.getItem("lastBooking");
+                if (localData) {
+                    data = JSON.parse(localData);
+                }
+            }
+
             if (!data) {
                 alert("No booking receipt found.");
                 return;
             }
+
             try {
-                currentBooking = JSON.parse(data);
+                currentBooking = data;
 
                 document.getElementById("invoiceId").textContent = currentBooking.id || "INV-58529";
                 document.getElementById("invoiceDate").textContent = currentBooking.bookingDate ? currentBooking.bookingDate.split(",")[0] : "-";
@@ -232,7 +251,7 @@
         }
 
         let isEditing = false;
-        function toggleEditMode() {
+        window.toggleEditMode = function() {
             isEditing = !isEditing;
             const saveBtn = document.getElementById("saveChangesBtn");
             const toggleBtn = document.getElementById("toggleEditBtn");
@@ -241,7 +260,6 @@
                 toggleBtn.textContent = "❌ Cancel Edit";
                 saveBtn.style.display = "block";
 
-                // Turn text into input fields for customization
                 document.getElementById("customerName").innerHTML = `<input type="text" id="editName" class="editable-input" value="${currentBooking.customerName || ''}">`;
                 document.getElementById("customerPhone").innerHTML = `<input type="text" id="editPhone" class="editable-input" value="${currentBooking.customerPhone || ''}">`;
                 document.getElementById("customerAddress").innerHTML = `<input type="text" id="editAddress" class="editable-input" value="${currentBooking.customerAddress || ''}">`;
@@ -249,13 +267,13 @@
                 document.getElementById("checkIn").innerHTML = `<input type="text" id="editCheckIn" class="editable-input" value="${currentBooking.checkIn || ''}">`;
                 document.getElementById("checkOut").innerHTML = `<input type="text" id="editCheckOut" class="editable-input" value="${currentBooking.checkOut || ''}">`;
             } else {
-                loadReceiptData(); // Reload normal view
+                loadReceiptData(); 
                 saveBtn.style.display = "none";
                 toggleBtn.textContent = "✏️ Customize / Edit";
             }
         }
 
-        function saveCustomChanges() {
+        window.saveCustomChanges = function() {
             currentBooking.customerName = document.getElementById("editName").value;
             currentBooking.customerPhone = document.getElementById("editPhone").value;
             currentBooking.customerAddress = document.getElementById("editAddress").value;
@@ -263,10 +281,8 @@
             currentBooking.checkIn = document.getElementById("editCheckIn").value;
             currentBooking.checkOut = document.getElementById("editCheckOut").value;
 
-            // Update in localStorage lastBooking
             localStorage.setItem("lastBooking", JSON.stringify(currentBooking));
 
-            // Also update in main resortBookings list if it exists
             const allData = localStorage.getItem("resortBookings");
             if (allData) {
                 let bookings = JSON.parse(allData);
