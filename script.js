@@ -1,28 +1,28 @@
-// --- FIREBASE CONFIGURATION ---
+// --- FIREBASE CONFIGURATION & INITIALIZATION ---
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-// আপনার ফায়ারবেস কনফিগারেশন এখানে বসান
 const firebaseConfig = {
-    apiKey: "YOUR_API_KEY",
-    authDomain: "YOUR_AUTH_DOMAIN",
-    projectId: "YOUR_PROJECT_ID",
-    storageBucket: "YOUR_STORAGE_BUCKET",
-    messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-    appId: "YOUR_APP_ID"
+    apiKey: "AIzaSyBpzarkWv2eTOL69jGU1IFHQnaDO3Cw_mw",
+    authDomain: "nirbannibashresort-7c73f.firebaseapp.com",
+    projectId: "nirbannibashresort-7c73f",
+    storageBucket: "nirbannibashresort-7c73f.firebasestorage.app",
+    messagingSenderId: "83312527640",
+    appId: "1:83312527640:web:8c4570fd1bf23bfa69b66d",
+    measurementId: "G-6693Y09Z05"
 };
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const bookingsCollection = collection(db, "resortBookings");
 
-// --- MAIN CODE ---
+// --- DOM ELEMENTS & VARIABLES ---
 const bookingForm = document.getElementById("bookingForm");
 const bookingList = document.getElementById("bookingList");
 const availableCount = document.getElementById("availableCount");
 
 let editingBookingId = null;
-let globalBookings = []; // লোকাল ক্যাশ বা মেমরির জন্য
+let globalBookings = []; // রিয়েল-টাইম ডাটা ক্যাশ রাখার জন্য
 
 // রিয়েল-টাইম ডাটা সিঙ্ক করার জন্য ফায়ারবেস লিসেনার
 function initRealtimeSync() {
@@ -42,7 +42,7 @@ function datesOverlap(start1, end1, start2, end2) {
 
 function isRoomAvailable(room, checkIn, checkOut, excludeBookingId = null) {
     return !globalBookings.some(booking => {
-        if (booking.status === "Cancelled") return false;
+        if (booking.status === "Cancelled" || booking.status === "CANCELLED") return false;
         if (excludeBookingId && (booking.id === excludeBookingId || booking.docId === excludeBookingId)) return false;
         if (booking.room !== room) return false;
         return datesOverlap(checkIn, checkOut, booking.checkIn, booking.checkOut);
@@ -122,7 +122,7 @@ if (bookingForm) {
             return;
         }
 
-        // ১০ ঘণ্টা বা তার কম সময় বাকি থাকলে বুকিং ব্লক করার ভ্যালিডেশন
+        // ১০ ঘণ্টা বা তার কম সময় বাকি থাকলে বুকিং বা এডিট ব্লক করার ভ্যালিডেশন
         const checkInTime = new Date(checkIn).getTime();
         const currentTime = new Date().getTime();
         const tenHoursInMs = 10 * 60 * 60 * 1000;
@@ -161,18 +161,19 @@ if (bookingForm) {
 
         try {
             if (editingBookingId) {
-                // ফায়ারবেসে ডাটা আপডেট করা
                 const existingBooking = globalBookings.find(b => b.id === editingBookingId || b.docId === editingBookingId);
                 if (existingBooking && existingBooking.docId) {
                     const docRef = doc(db, "resortBookings", existingBooking.docId);
                     await updateDoc(docRef, bookingData);
+                    bookingData.docId = existingBooking.docId;
                 }
                 editingBookingId = null;
             } else {
-                // নতুন বুকিং ফায়ারবেসে সেভ করা
-                await addDoc(bookingsCollection, bookingData);
+                const docRef = await addDoc(bookingsCollection, bookingData);
+                bookingData.docId = docRef.id;
             }
 
+            // রিসিভ পেজের জন্য লোকাল স্টোরেজে ব্যাকআপ
             localStorage.setItem("lastBooking", JSON.stringify(bookingData));
 
             alert("Booking confirmed successfully!\nInvoice No: " + bookingData.id);
@@ -197,11 +198,10 @@ function displayBookings() {
     }
 
     bookingList.innerHTML = "";
-    // রিভার্স করে দেখানো যাতে নতুন বুকিং উপরে থাকে
     [...globalBookings].reverse().forEach(booking => {
         const item = document.createElement("div");
         item.className = "booking-item";
-        const statusClass = booking.status === "Cancelled" ? "cancelled" : "confirmed";
+        const statusClass = (booking.status === "Cancelled" || booking.status === "CANCELLED") ? "cancelled" : "confirmed";
         
         const subtotal = Number(booking.amount || 0);
         const discount = Number(booking.discountAmount || 0);
@@ -211,14 +211,14 @@ function displayBookings() {
             <div class="booking-info">
                 <strong>${escapeHTML(booking.customerName)} (${escapeHTML(booking.customerAddress)})</strong>
                 <p>Invoice: ${escapeHTML(booking.id)} | Unit: ${escapeHTML(booking.room)}</p>
-                <p>📞 ${escapeHTML(booking.customerPhone)} | 👤 Staff: ${escapeHTML(booking.generatedBy || "Mr. Shahajan")}</p>
+                <p>📞 ${escapeHTML(booking.customerPhone)} | 👤 Staff: ${escapeHTML(booking.generatedBy || "Mr. Tajbi")}</p>
                 <p>📅 ${escapeHTML(booking.checkIn)} → ${escapeHTML(booking.checkOut)}</p>
                 <p>💰 Total: ৳${subtotal} | Due: <span style="color:red; font-weight:bold;">৳${due}</span></p>
             </div>
             <div class="booking-actions">
                 <span class="booking-status ${statusClass}">${escapeHTML(booking.status)}</span>
                 <button type="button" onclick="viewReceipt('${booking.id}')" class="receipt-btn">🧾 Invoice</button>
-                ${booking.status !== "Cancelled" ? `<button type="button" onclick="cancelBooking('${booking.docId || booking.id}')" class="delete-btn">❌ Cancel</button>` : ""}
+                ${(booking.status !== "Cancelled" && booking.status !== "CANCELLED") ? `<button type="button" onclick="cancelBooking('${booking.docId || booking.id}')" class="delete-btn">❌ Cancel</button>` : ""}
             </div>
         `;
         bookingList.appendChild(item);
@@ -268,7 +268,7 @@ function updateRoomStatus() {
 
     roomCards.forEach(card => {
         const room = card.dataset.room;
-        const activeBooking = globalBookings.find(b => b.status !== "Cancelled" && b.room === room && b.checkIn <= today && b.checkOut > today);
+        const activeBooking = globalBookings.find(b => b.status !== "Cancelled" && b.status !== "CANCELLED" && b.room === room && b.checkIn <= today && b.checkOut > today);
 
         const status = card.querySelector(".status");
         if (activeBooking) {
