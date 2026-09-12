@@ -1,6 +1,6 @@
 // --- FIREBASE CONFIGURATION & INITIALIZATION ---
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { getFirestore, collection, addDoc, doc, updateDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
 const firebaseConfig = {
     apiKey: "AIzaSyBpzarkWv2eTOL69jGU1IFHQnaDO3Cw_mw",
@@ -22,9 +22,9 @@ const bookingList = document.getElementById("bookingList");
 const availableCount = document.getElementById("availableCount");
 
 let editingBookingId = null;
-let globalBookings = []; // রিয়েল-টাইম ডাটা ক্যাশ রাখার জন্য
+let globalBookings = [];
 
-// রিয়েল-টাইম ডাটা সিঙ্ক করার জন্য ফায়ারবেস লিসেনার
+// রিয়েল-টাইম ডাটা সিঙ্ক
 function initRealtimeSync() {
     onSnapshot(bookingsCollection, (snapshot) => {
         globalBookings = [];
@@ -49,7 +49,8 @@ function isRoomAvailable(room, checkIn, checkOut, excludeBookingId = null) {
     });
 }
 
-function checkRooms() {
+// রুম চেক করার ফাংশন
+window.checkRooms = function() {
     const checkIn = document.getElementById("checkIn").value;
     const checkOut = document.getElementById("checkOut").value;
 
@@ -84,11 +85,22 @@ function checkRooms() {
 
     if (availableCount) availableCount.textContent = available;
     alert(available + " unit(s) available for the selected dates.");
-}
+};
 
-function scrollToBooking() {
+window.scrollToBooking = function() {
     const section = document.getElementById("bookingSection");
     if (section) section.scrollIntoView({ behavior: "smooth" });
+};
+
+// ১০ ঘণ্টার ভ্যালিডেশন চেক করার হেলপার ফাংশন
+function isWithinTenHours(checkInDateString) {
+    // YYYY-MM-DD ফরম্যাটকে স্থানীয় সময়ের শুরুর সময় (00:00:00) ধরে পার্স করা
+    const [year, month, day] = checkInDateString.split('-').map(Number);
+    const checkInTime = new Date(year, month - 1, day, 0, 0, 0).getTime();
+    const currentTime = Date.now();
+    const tenHoursInMs = 10 * 60 * 60 * 1000;
+
+    return (checkInTime - currentTime) < tenHoursInMs;
 }
 
 if (bookingForm) {
@@ -122,12 +134,8 @@ if (bookingForm) {
             return;
         }
 
-        // ১০ ঘণ্টা বা তার কম সময় বাকি থাকলে বুকিং বা এডিট ব্লক করার ভ্যালিডেশন
-        const checkInTime = new Date(checkIn).getTime();
-        const currentTime = new Date().getTime();
-        const tenHoursInMs = 10 * 60 * 60 * 1000;
-
-        if ((checkInTime - currentTime) < tenHoursInMs) {
+        // ১০ ঘণ্টার সময়সীমা ভ্যালিডেশন
+        if (isWithinTenHours(checkIn)) {
             alert("দুঃখিত! চেক-ইন করার ১০ ঘণ্টার মধ্যে বা তার কম সময় বাকি থাকলে নতুন বুকিং বা পরিবর্তন করা যাবে না।");
             return;
         }
@@ -173,7 +181,6 @@ if (bookingForm) {
                 bookingData.docId = docRef.id;
             }
 
-            // রিসিভ পেজের জন্য লোকাল স্টোরেজে ব্যাকআপ
             localStorage.setItem("lastBooking", JSON.stringify(bookingData));
 
             alert("Booking confirmed successfully!\nInvoice No: " + bookingData.id);
@@ -225,23 +232,20 @@ function displayBookings() {
     });
 }
 
-function viewReceipt(bookingId) {
+// HTML onclick থেকে কল করার জন্য window অবজেক্টে যোগ করা হয়েছে
+window.viewReceipt = function(bookingId) {
     const booking = globalBookings.find(item => item.id === bookingId);
     if (!booking) return;
     localStorage.setItem("lastBooking", JSON.stringify(booking));
     window.open("receipt.html", "_blank");
-}
+};
 
-async function cancelBooking(identifier) {
+window.cancelBooking = async function(identifier) {
     const booking = globalBookings.find(item => item.docId === identifier || item.id === identifier);
     if (!booking) return;
 
-    // ক্যানসেল করার ক্ষেত্রে ১০ ঘণ্টার নিয়ম চেক করা
-    const checkInTime = new Date(booking.checkIn).getTime();
-    const currentTime = new Date().getTime();
-    const tenHoursInMs = 10 * 60 * 60 * 1000;
-
-    if ((checkInTime - currentTime) < tenHoursInMs) {
+    // ক্যানসেল করার ক্ষেত্রে ১০ ঘণ্টার নিয়ম চেক
+    if (isWithinTenHours(booking.checkIn)) {
         alert("দুঃখিত! চেক-ইন করার ১০ ঘণ্টার মধ্যে বা তার কম সময় বাকি থাকলে বুকিং ক্যানসেল করা যাবে না।");
         return;
     }
@@ -259,7 +263,7 @@ async function cancelBooking(identifier) {
             alert("Failed to cancel booking.");
         }
     }
-}
+};
 
 function updateRoomStatus() {
     const roomCards = document.querySelectorAll(".room-card");
