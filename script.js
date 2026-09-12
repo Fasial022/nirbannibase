@@ -17,9 +17,7 @@ const db = getFirestore(app);
 const bookingsCollection = collection(db, "resortBookings");
 
 // --- DOM ELEMENTS & VARIABLES ---
-const bookingForm = document.getElementById("bookingForm");
-const bookingList = document.getElementById("bookingList");
-const availableCount = document.getElementById("availableCount");
+let bookingForm, bookingList, availableCount;
 
 let editingBookingId = null;
 let globalBookings = [];
@@ -33,6 +31,8 @@ function initRealtimeSync() {
         });
         updateRoomStatus();
         displayBookings();
+    }, (error) => {
+        console.error("Firebase Snapshot Error:", error);
     });
 }
 
@@ -49,10 +49,18 @@ function isRoomAvailable(room, checkIn, checkOut, excludeBookingId = null) {
     });
 }
 
-// রুম চেক করার ফাংশন
+// 🟢 HTML onclick এর জন্য Availability Check ফাংশন Window-তে মাউন্ট করা হলো
 window.checkRooms = function() {
-    const checkIn = document.getElementById("checkIn").value;
-    const checkOut = document.getElementById("checkOut").value;
+    const checkInInput = document.getElementById("checkIn");
+    const checkOutInput = document.getElementById("checkOut");
+
+    if (!checkInInput || !checkOutInput) {
+        alert("Check-in and Check-out input fields not found in HTML!");
+        return;
+    }
+
+    const checkIn = checkInInput.value;
+    const checkOut = checkOutInput.value;
 
     if (!checkIn || !checkOut) {
         alert("Please select Check-in and Check-out dates.");
@@ -83,6 +91,7 @@ window.checkRooms = function() {
         }
     });
 
+    availableCount = document.getElementById("availableCount");
     if (availableCount) availableCount.textContent = available;
     alert(available + " unit(s) available for the selected dates.");
 };
@@ -92,9 +101,8 @@ window.scrollToBooking = function() {
     if (section) section.scrollIntoView({ behavior: "smooth" });
 };
 
-// ১০ ঘণ্টার ভ্যালিডেশন চেক করার হেলপার ফাংশন
+// ১০ ঘণ্টার নিয়ম যাচাই
 function isWithinTenHours(checkInDateString) {
-    // YYYY-MM-DD ফরম্যাটকে স্থানীয় সময়ের শুরুর সময় (00:00:00) ধরে পার্স করা
     const [year, month, day] = checkInDateString.split('-').map(Number);
     const checkInTime = new Date(year, month - 1, day, 0, 0, 0).getTime();
     const currentTime = Date.now();
@@ -103,139 +111,13 @@ function isWithinTenHours(checkInDateString) {
     return (checkInTime - currentTime) < tenHoursInMs;
 }
 
-if (bookingForm) {
-    bookingForm.addEventListener("submit", async function(event) {
-        event.preventDefault();
-
-        const customerName = document.getElementById("customerName").value.trim();
-        const customerPhone = document.getElementById("customerPhone").value.trim();
-        const customerAddress = document.getElementById("customerAddress").value.trim();
-        const customerEmail = document.getElementById("customerEmail").value.trim();
-        const customerNid = document.getElementById("customerNid").value.trim();
-        
-        const checkIn = document.getElementById("bookingCheckIn").value;
-        const checkOut = document.getElementById("bookingCheckOut").value;
-        const room = document.getElementById("roomSelect").value;
-        const guests = document.getElementById("guests").value;
-        const generatedBy = document.getElementById("generatedBy").value.trim();
-        
-        const amount = document.getElementById("amount").value;
-        const discountAmount = document.getElementById("discountAmount").value || 0;
-        const paidAmount = document.getElementById("paidAmount").value || 0;
-        const paymentMethod = document.getElementById("paymentMethod").value;
-
-        if (!customerName || !customerPhone || !checkIn || !checkOut || !room || !amount) {
-            alert("Please fill in all required fields.");
-            return;
-        }
-
-        if (checkIn >= checkOut) {
-            alert("Check-out date must be after Check-in date.");
-            return;
-        }
-
-        // ১০ ঘণ্টার সময়সীমা ভ্যালিডেশন
-        if (isWithinTenHours(checkIn)) {
-            alert("দুঃখিত! চেক-ইন করার ১০ ঘণ্টার মধ্যে বা তার কম সময় বাকি থাকলে নতুন বুকিং বা পরিবর্তন করা যাবে না।");
-            return;
-        }
-
-        if (!isRoomAvailable(room, checkIn, checkOut, editingBookingId)) {
-            alert("Sorry! This unit is already booked for these dates.");
-            return;
-        }
-
-        const bookingNumber = "INV-" + Date.now().toString().slice(-5);
-
-        const bookingData = {
-            id: editingBookingId || bookingNumber,
-            customerName,
-            customerPhone,
-            customerAddress,
-            customerEmail,
-            customerNid,
-            checkIn,
-            checkOut,
-            room,
-            guests,
-            generatedBy,
-            amount,
-            discountAmount,
-            paidAmount,
-            paymentMethod,
-            status: "Booked",
-            bookingDate: new Date().toLocaleString()
-        };
-
-        try {
-            if (editingBookingId) {
-                const existingBooking = globalBookings.find(b => b.id === editingBookingId || b.docId === editingBookingId);
-                if (existingBooking && existingBooking.docId) {
-                    const docRef = doc(db, "resortBookings", existingBooking.docId);
-                    await updateDoc(docRef, bookingData);
-                    bookingData.docId = existingBooking.docId;
-                }
-                editingBookingId = null;
-            } else {
-                const docRef = await addDoc(bookingsCollection, bookingData);
-                bookingData.docId = docRef.id;
-            }
-
-            localStorage.setItem("lastBooking", JSON.stringify(bookingData));
-
-            alert("Booking confirmed successfully!\nInvoice No: " + bookingData.id);
-            window.open("receipt.html", "_blank");
-
-            bookingForm.reset();
-            updateRoomStatus();
-            displayBookings();
-        } catch (error) {
-            console.error("Error saving booking: ", error);
-            alert("Failed to save booking. Please check your internet connection.");
-        }
-    });
-}
-
-function displayBookings() {
-    if (!bookingList) return;
-
-    if (globalBookings.length === 0) {
-        bookingList.innerHTML = `<div class="empty-booking">No bookings yet.</div>`;
+// 🟢 বুকিং পেজ ভিউ এবং ইনভয়েস দেখার জন্য Window ফাংশন
+window.viewReceipt = function(bookingId) {
+    const booking = globalBookings.find(item => item.id === bookingId || item.docId === bookingId);
+    if (!booking) {
+        alert("Invoice details not found!");
         return;
     }
-
-    bookingList.innerHTML = "";
-    [...globalBookings].reverse().forEach(booking => {
-        const item = document.createElement("div");
-        item.className = "booking-item";
-        const statusClass = (booking.status === "Cancelled" || booking.status === "CANCELLED") ? "cancelled" : "confirmed";
-        
-        const subtotal = Number(booking.amount || 0);
-        const discount = Number(booking.discountAmount || 0);
-        const due = (subtotal - discount) - Number(booking.paidAmount || 0);
-
-        item.innerHTML = `
-            <div class="booking-info">
-                <strong>${escapeHTML(booking.customerName)} (${escapeHTML(booking.customerAddress)})</strong>
-                <p>Invoice: ${escapeHTML(booking.id)} | Unit: ${escapeHTML(booking.room)}</p>
-                <p>📞 ${escapeHTML(booking.customerPhone)} | 👤 Staff: ${escapeHTML(booking.generatedBy || "Mr. Tajbi")}</p>
-                <p>📅 ${escapeHTML(booking.checkIn)} → ${escapeHTML(booking.checkOut)}</p>
-                <p>💰 Total: ৳${subtotal} | Due: <span style="color:red; font-weight:bold;">৳${due}</span></p>
-            </div>
-            <div class="booking-actions">
-                <span class="booking-status ${statusClass}">${escapeHTML(booking.status)}</span>
-                <button type="button" onclick="viewReceipt('${booking.id}')" class="receipt-btn">🧾 Invoice</button>
-                ${(booking.status !== "Cancelled" && booking.status !== "CANCELLED") ? `<button type="button" onclick="cancelBooking('${booking.docId || booking.id}')" class="delete-btn">❌ Cancel</button>` : ""}
-            </div>
-        `;
-        bookingList.appendChild(item);
-    });
-}
-
-// HTML onclick থেকে কল করার জন্য window অবজেক্টে যোগ করা হয়েছে
-window.viewReceipt = function(bookingId) {
-    const booking = globalBookings.find(item => item.id === bookingId);
-    if (!booking) return;
     localStorage.setItem("lastBooking", JSON.stringify(booking));
     window.open("receipt.html", "_blank");
 };
@@ -244,7 +126,6 @@ window.cancelBooking = async function(identifier) {
     const booking = globalBookings.find(item => item.docId === identifier || item.id === identifier);
     if (!booking) return;
 
-    // ক্যানসেল করার ক্ষেত্রে ১০ ঘণ্টার নিয়ম চেক
     if (isWithinTenHours(booking.checkIn)) {
         alert("দুঃখিত! চেক-ইন করার ১০ ঘণ্টার মধ্যে বা তার কম সময় বাকি থাকলে বুকিং ক্যানসেল করা যাবে না।");
         return;
@@ -265,9 +146,50 @@ window.cancelBooking = async function(identifier) {
     }
 };
 
+function displayBookings() {
+    bookingList = document.getElementById("bookingList");
+    if (!bookingList) return;
+
+    if (globalBookings.length === 0) {
+        bookingList.innerHTML = `<div class="empty-booking">No bookings yet.</div>`;
+        return;
+    }
+
+    bookingList.innerHTML = "";
+    [...globalBookings].reverse().forEach(booking => {
+        const item = document.createElement("div");
+        item.className = "booking-item";
+        const statusClass = (booking.status === "Cancelled" || booking.status === "CANCELLED") ? "cancelled" : "confirmed";
+        
+        const subtotal = Number(booking.amount || 0);
+        const discount = Number(booking.discountAmount || 0);
+        const due = (subtotal - discount) - Number(booking.paidAmount || 0);
+
+        item.innerHTML = `
+            <div class="booking-info">
+                <strong>${escapeHTML(booking.customerName || 'N/A')} (${escapeHTML(booking.customerAddress || 'N/A')})</strong>
+                <p>Invoice: ${escapeHTML(booking.id)} | Unit: ${escapeHTML(booking.room)}</p>
+                <p>📞 ${escapeHTML(booking.customerPhone)} | 👤 Staff: ${escapeHTML(booking.generatedBy || "Mr. Tajbi")}</p>
+                <p>📅 ${escapeHTML(booking.checkIn)} → ${escapeHTML(booking.checkOut)}</p>
+                <p>💰 Total: ৳${subtotal} | Due: <span style="color:red; font-weight:bold;">৳${due}</span></p>
+            </div>
+            <div class="booking-actions">
+                <span class="booking-status ${statusClass}">${escapeHTML(booking.status)}</span>
+                <button type="button" onclick="viewReceipt('${booking.id}')" class="receipt-btn">🧾 Invoice</button>
+                ${(booking.status !== "Cancelled" && booking.status !== "CANCELLED") ? `<button type="button" onclick="cancelBooking('${booking.docId || booking.id}')" class="delete-btn">❌ Cancel</button>` : ""}
+            </div>
+        `;
+        bookingList.appendChild(item);
+    });
+}
+
 function updateRoomStatus() {
     const roomCards = document.querySelectorAll(".room-card");
-    const today = new Date().toISOString().split("T")[0];
+    
+    // স্থানীয় তারিখ বের করার সঠিক উপায়
+    const now = new Date();
+    const today = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
+    
     let available = 0;
 
     roomCards.forEach(card => {
@@ -287,6 +209,7 @@ function updateRoomStatus() {
         }
     });
 
+    availableCount = document.getElementById("availableCount");
     if (availableCount) availableCount.textContent = available;
 }
 
@@ -295,6 +218,101 @@ function escapeHTML(value) {
     return String(value).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
 }
 
+// 🟢 DOM লোড নিশ্চিত হওয়ার পর ইভেন্ট লিসেনার যুক্ত করা
 document.addEventListener("DOMContentLoaded", function() {
+    bookingForm = document.getElementById("bookingForm");
+
+    if (bookingForm) {
+        bookingForm.addEventListener("submit", async function(event) {
+            event.preventDefault();
+
+            const customerName = document.getElementById("customerName")?.value.trim();
+            const customerPhone = document.getElementById("customerPhone")?.value.trim();
+            const customerAddress = document.getElementById("customerAddress")?.value.trim();
+            const customerEmail = document.getElementById("customerEmail")?.value.trim();
+            const customerNid = document.getElementById("customerNid")?.value.trim();
+            
+            const checkIn = document.getElementById("bookingCheckIn")?.value;
+            const checkOut = document.getElementById("bookingCheckOut")?.value;
+            const room = document.getElementById("roomSelect")?.value;
+            const guests = document.getElementById("guests")?.value;
+            const generatedBy = document.getElementById("generatedBy")?.value.trim();
+            
+            const amount = document.getElementById("amount")?.value;
+            const discountAmount = document.getElementById("discountAmount")?.value || 0;
+            const paidAmount = document.getElementById("paidAmount")?.value || 0;
+            const paymentMethod = document.getElementById("paymentMethod")?.value;
+
+            if (!customerName || !customerPhone || !checkIn || !checkOut || !room || !amount) {
+                alert("Please fill in all required fields.");
+                return;
+            }
+
+            if (checkIn >= checkOut) {
+                alert("Check-out date must be after Check-in date.");
+                return;
+            }
+
+            if (isWithinTenHours(checkIn)) {
+                alert("দুঃখিত! চেক-ইন করার ১০ ঘণ্টার মধ্যে বা তার কম সময় বাকি থাকলে নতুন বুকিং বা পরিবর্তন করা যাবে না।");
+                return;
+            }
+
+            if (!isRoomAvailable(room, checkIn, checkOut, editingBookingId)) {
+                alert("Sorry! This unit is already booked for these dates.");
+                return;
+            }
+
+            const bookingNumber = "INV-" + Date.now().toString().slice(-5);
+
+            const bookingData = {
+                id: editingBookingId || bookingNumber,
+                customerName,
+                customerPhone,
+                customerAddress,
+                customerEmail,
+                customerNid,
+                checkIn,
+                checkOut,
+                room,
+                guests,
+                generatedBy,
+                amount,
+                discountAmount,
+                paidAmount,
+                paymentMethod,
+                status: "Booked",
+                bookingDate: new Date().toLocaleString()
+            };
+
+            try {
+                if (editingBookingId) {
+                    const existingBooking = globalBookings.find(b => b.id === editingBookingId || b.docId === editingBookingId);
+                    if (existingBooking && existingBooking.docId) {
+                        const docRef = doc(db, "resortBookings", existingBooking.docId);
+                        await updateDoc(docRef, bookingData);
+                        bookingData.docId = existingBooking.docId;
+                    }
+                    editingBookingId = null;
+                } else {
+                    const docRef = await addDoc(bookingsCollection, bookingData);
+                    bookingData.docId = docRef.id;
+                }
+
+                localStorage.setItem("lastBooking", JSON.stringify(bookingData));
+
+                alert("Booking confirmed successfully!\nInvoice No: " + bookingData.id);
+                window.open("receipt.html", "_blank");
+
+                bookingForm.reset();
+                updateRoomStatus();
+                displayBookings();
+            } catch (error) {
+                console.error("Error saving booking: ", error);
+                alert("Failed to save booking. Please check your internet connection.");
+            }
+        });
+    }
+
     initRealtimeSync();
 });
