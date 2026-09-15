@@ -50,16 +50,6 @@ function isRoomAvailable(room, checkIn, checkOut, excludeDocId = null) {
     });
 }
 
-function isWithinTenHours(checkInDateString) {
-    if (!checkInDateString) return false;
-    const [year, month, day] = checkInDateString.split('-').map(Number);
-    const checkInTime = new Date(year, month - 1, day, 0, 0, 0).getTime();
-    const currentTime = Date.now();
-    const tenHoursInMs = 10 * 60 * 60 * 1000;
-
-    return (checkInTime - currentTime) < tenHoursInMs;
-}
-
 function escapeHTML(value) {
     if (value === null || value === undefined) return "";
     return String(value)
@@ -128,15 +118,10 @@ window.viewReceipt = function(docId) {
     window.open("receipt.html", "_blank");
 };
 
-// বুকিং ক্যানসেল
+// বুকিং ক্যানসেল (কোনো সময় সংক্রান্ত বাধা ছাড়াই)
 window.cancelBooking = async function(docId) {
     const booking = globalBookings.find(item => item.docId === docId || item.id === docId);
     if (!booking) return;
-
-    if (isWithinTenHours(booking.checkIn)) {
-        alert("দুঃখিত! চেক-ইন করার ১০ ঘণ্টার মধ্যে বা তার কম সময় বাকি থাকলে বুকিং ক্যানসেল করা যাবে না।");
-        return;
-    }
 
     const invId = booking.id || booking.docId;
     if (confirm(`Are you sure you want to cancel booking (${invId})?`)) {
@@ -343,11 +328,6 @@ document.addEventListener("DOMContentLoaded", function() {
 
             if (checkIn >= checkOut) {
                 alert("Check-out date must be after Check-in date.");
-                return;
-            }
-
-            if (isWithinTenHours(checkIn)) {
-                alert("দুঃখিত! চেক-ইন করার ১০ ঘণ্টার মধ্যে বা তার কম সময় বাকি থাকলে নতুন বুকিং তৈরি করা যাবে না।");
                 return;
             }
 
